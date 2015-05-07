@@ -53,17 +53,19 @@ lua-resty-redis - 基于cosocket API为ngx_lua 开发的 lua连接redis 的链�
 http://wiki.nginx.org/HttpLuaModule 
 //nginx_lua_module地址。
 
-This Lua library takes advantage of ngx_lua's cosocket API, which ensures
-100% nonblocking behavior.
+受益于ngx_lua 的 cosocket API，这个库能够在完全非阻塞的模式下运行。
 
-Note that at least [ngx_lua 0.5.14](https://github.com/chaoslawful/lua-nginx-module/tags) or [ngx_openresty 1.2.1.14](http://openresty.org/#Download) is required.
+
+
+版本支持： 需要[ngx_lua 0.5.14](https://github.com/chaoslawful/lua-nginx-module/tags)以上
+            或
+         需要[ngx_openresty 1.2.1.14](http://openresty.org/#Download) 以上
 
 用法
 ========
 
 ```lua
-    # you do not need the following line if you are using
-    # the ngx_openresty bundle:
+    # 如果使用ngx_openresty可不写下面这一行
     lua_package_path "/path/to/lua-resty-redis/lib/?.lua;;";
 
     server {
@@ -74,8 +76,7 @@ Note that at least [ngx_lua 0.5.14](https://github.com/chaoslawful/lua-nginx-mod
 
                 red:set_timeout(1000) -- 1 sec
 
-                -- or connect to a unix domain socket file listened
-                -- by a redis server:
+                -- socket监听模式的写法
                 --     local ok, err = red:connect("unix:/path/to/redis.sock")
 
                 local ok, err = red:connect("127.0.0.1", 6379)
@@ -147,34 +148,36 @@ Note that at least [ngx_lua 0.5.14](https://github.com/chaoslawful/lua-nginx-mod
     }
 ```
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 方法
 =======
 
 All of the Redis commands have their own methods with the same name except all in lower case.
-
+支持所有的redis命令，除非命令是全部小写的。
 You can find the complete list of Redis commands here:
-
+可以在下面的链接找到redis的所有命令
 http://redis.io/commands
 
 You need to check out this Redis command reference to see what Redis command accepts what arguments.
+你需要从这个命令参考中找到redis的哪些命令支持哪些参数。
 
 The Redis command arguments can be directly fed into the corresponding method call. For example, the "GET" redis command accepts a single key argument, then you can just call the "get" method like this:
-
+REDIS的命令调用可以直接映射到这里的方法调用。例如   redis的GET命令接受一个参数，你就可以想下面这样调用REDIS的GET方法：
 ```lua
     local res, err = red:get("key")
 ```
 
 Similarly, the "LRANGE" redis command accepts threee arguments, then you should call the "lrange" method like this:
-
+类似的，REDIS的命令LRANGE命令接受三个参数，你可以像下面这样调用这个方法：
 ```lua
     local res, err = red:lrange("nokey", 0, 1)
 ```
 
 For example, "SET", "GET", "LRANGE", and "BLPOP" commands correspond to the methods "set", "get", "lrange", and "blpop".
-
+例如，"SET","GET","LRANGE" 和 "BLPOP" 命令映射过来就是"set", "get", "lrange", 和 "blpop" 方法.
 Here are some more examples:
+下面是更多的例子：
 
 ```lua
     -- HMGET myhash field1 field2 nofield
@@ -204,7 +207,7 @@ See http://redis.io/topics/protocol for details regarding various Redis reply ty
 
 In addition to all those redis command methods, the following methods are also provided:
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 new
 ---
@@ -212,7 +215,7 @@ new
 
 Creates a redis object. In case of failures, returns `nil` and a string describing the error.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 connect
 -------
@@ -230,7 +233,7 @@ An optional Lua table can be specified as the last argument to this method to sp
 
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>` or `<unix-socket-path>`.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 set_timeout
 ----------
@@ -238,7 +241,7 @@ set_timeout
 
 Sets the timeout (in ms) protection for subsequent operations, including the `connect` method.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 set_keepalive
 ------------
@@ -252,7 +255,7 @@ In case of success, returns `1`. In case of errors, returns `nil` with a string 
 
 Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current redis object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 get_reused_times
 ----------------
@@ -262,7 +265,7 @@ This method returns the (successfully) reused times for the current connection. 
 
 If the current connection does not come from the built-in connection pool, then this method always returns `0`, that is, the connection has never been reused (yet). If the connection comes from the connection pool, then the return value is always non-zero. So this method can also be used to determine if the current connection comes from the pool.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 close
 -----
@@ -272,7 +275,7 @@ Closes the current redis connection and returns the status.
 
 In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 init_pipeline
 -------------
@@ -288,7 +291,7 @@ If the redis object is already in the Redis pipelining mode, then calling this m
 
 The optional `n` argument specifies the (approximate) number of commands that are going to add to this pipeline, which can make things a little faster.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 commit_pipeline
 ---------------
@@ -298,7 +301,7 @@ Quits the pipelining mode by committing all the cached Redis queries to the remo
 
 This method returns `nil` and a Lua string describing the error upon failures.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 cancel_pipeline
 ---------------
@@ -310,7 +313,7 @@ This method always succeeds.
 
 If the redis object is not in the Redis pipelining mode, then this method is a no-op.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 hmset
 -----
@@ -323,7 +326,7 @@ Special wrapper for the Redis "hmset" command.
 When there are only three arguments (including the "red" object
 itself), then the last argument must be a Lua table holding all the field/value pairs.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 array_to_hash
 -------------
@@ -333,7 +336,7 @@ Auxiliary function that converts an array-like Lua table into a hash-like table.
 
 This method was first introduced in the `v0.11` release.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 read_reply
 ----------
@@ -399,7 +402,7 @@ Running this example gives the output like this:
 
 The following class methods are provieded:
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 add_commands
 ------------
@@ -433,7 +436,7 @@ Adds new redis commands to the `resty.redis` class. Here is an example:
     end
 ```
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Redis Authentication
 ====================
@@ -472,7 +475,7 @@ following to the HTTP client:
 
     failed to authenticate: ERR invalid password
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Redis Transactions
 ==================
@@ -526,7 +529,7 @@ Then the output will be
     set ans: "QUEUED"
     exec ans: ["OK",[false,"ERR Operation against a key holding the wrong kind of value"]]
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Load Balancing and Failover
 ===========================
@@ -535,7 +538,7 @@ You can trivially implement your own Redis load balancing logic yourself in Lua.
 
 Similarly, you can implement automatic failover logic in Lua at great flexibility.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Debugging
 =========
@@ -551,7 +554,7 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
     end
 ```
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Automatic Error Logging
 =======================
@@ -564,7 +567,7 @@ handling in your own Lua code, then you are recommended to disable this automati
     lua_socket_log_errors off;
 ```
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Check List for Issues
 =====================
@@ -576,7 +579,7 @@ Check List for Issues
 5. If your NGINX worker processes' CPU usage is very low under load, then the NGINX event loop might be blocked by some blocking system calls (like file IO system calls). You can confirm the issue by running the [epoll-loop-blocking-distr](https://github.com/agentzh/stapxx#epoll-loop-blocking-distr) tool against a typical NGINX worker process. If it is indeed the case, then you can further sample a [C-land off-CPU Flame Graph](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt-off-cpu) for a NGINX worker process to analyze the actual blockers.
 6. If your `redis-server` process is running near 100% CPU usage, then you should consider scale your Redis backend by multiple nodes or use the [C-land on-CPU Flame Graph tool](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt) to analyze the internal bottlenecks within the Redis server process.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Limitations
 ===========
@@ -593,7 +596,7 @@ You should always initiate `resty.redis` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Installation
 ============
@@ -623,31 +626,31 @@ tree to ngx_lua's LUA_PATH search path, as in
 Ensure that the system account running your Nginx ''worker'' proceses have
 enough permission to read the `.lua` file.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 TODO
 ====
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Community
 =========
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 English Mailing List
 --------------------
 
 The [openresty-en](https://groups.google.com/group/openresty-en) mailing list is for English speakers.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Chinese Mailing List
 --------------------
 
 The [openresty](https://groups.google.com/group/openresty) mailing list is for Chinese speakers.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Bugs and Patches
 ================
@@ -657,14 +660,14 @@ Please report bugs or submit patches by
 1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-redis/issues),
 1. or posting to the [OpenResty community](#community).
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Author
 ======
 
 Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 Copyright and License
 =====================
@@ -683,7 +686,7 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
 See Also
 ========
@@ -692,5 +695,5 @@ See Also
 * the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
 * the [lua-resty-mysql](https://github.com/agentzh/lua-resty-mysql) library
 
-[Back to TOC](#table-of-contents)
+[返回顶部](#目录列表)
 
