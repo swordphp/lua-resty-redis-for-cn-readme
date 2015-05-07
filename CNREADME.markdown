@@ -48,7 +48,7 @@ lua-resty-redis - 基于cosocket API为ngx_lua 开发的 lua连接redis 的链�
 
 介绍
 ===========
-这个库是为nginx的拓展 ngx_lua 写的用于通过lua操作redis的库。
+这个库是为nginx的拓展 ngx_lua 写的，用于通过lua操作redis的库。
 
 http://wiki.nginx.org/HttpLuaModule 
 //nginx_lua_module地址。
@@ -153,30 +153,23 @@ http://wiki.nginx.org/HttpLuaModule
 方法
 =======
 
-All of the Redis commands have their own methods with the same name except all in lower case.
 支持所有的redis命令，除非命令是全部小写的。
-You can find the complete list of Redis commands here:
 可以在下面的链接找到redis的所有命令
 http://redis.io/commands
 
-You need to check out this Redis command reference to see what Redis command accepts what arguments.
 你需要从这个命令参考中找到redis的哪些命令支持哪些参数。
 
-The Redis command arguments can be directly fed into the corresponding method call. For example, the "GET" redis command accepts a single key argument, then you can just call the "get" method like this:
 REDIS的命令调用可以直接映射到这里的方法调用。例如   redis的GET命令接受一个参数，你就可以想下面这样调用REDIS的GET方法：
 ```lua
     local res, err = red:get("key")
 ```
 
-Similarly, the "LRANGE" redis command accepts threee arguments, then you should call the "lrange" method like this:
 类似的，REDIS的命令LRANGE命令接受三个参数，你可以像下面这样调用这个方法：
 ```lua
     local res, err = red:lrange("nokey", 0, 1)
 ```
 
-For example, "SET", "GET", "LRANGE", and "BLPOP" commands correspond to the methods "set", "get", "lrange", and "blpop".
 例如，"SET","GET","LRANGE" 和 "BLPOP" 命令映射过来就是"set", "get", "lrange", 和 "blpop" 方法.
-Here are some more examples:
 下面是更多的例子：
 
 ```lua
@@ -189,30 +182,37 @@ Here are some more examples:
     local res, err = red:hmset("myhash", "field1", "Hello", "field2", "World")
 ```
 
-All these command methods returns a single result in success and `nil` otherwise. In case of errors or failures, it will also return a second value which is a string describing the error.
 
-A Redis "status reply" results in a string typed return value with the "+" prefix stripped.
+所有的命令都能够在正常的时候得到一个正常的返回值或者 nil  如果有什么错误发生了，还是会返回一个字符串形式的错误描述信息。
 
-A Redis "integer reply" results in a Lua number typed return value.
 
-A Redis "error reply" results in a `false` value *and* a string describing the error.
+一个REDIS的 "status reply" 返回值会返回一个去掉了"+"的返回值。
 
-A non-nil Redis "bulk reply" results in a Lua string as the return value. A nil bulk reply results in a `ngx.null` return value.
 
-A non-nil Redis "multi-bulk reply" results in a Lua table holding all the composing values (if any). If any of the composing value is a valid redis error value, then it will be a two element table `{false, err}`.
+一个REDIS的 "integer reply" 返回值会返回一个lua的number类型值。
 
-A nil multi-bulk reply returns in a `ngx.null` value.
 
-See http://redis.io/topics/protocol for details regarding various Redis reply types.
+一个REDIS的 "error reply"返回值会返回一个 false *和* 字符串类型的错误描述
 
-In addition to all those redis command methods, the following methods are also provided:
 
+一个REDIS的 非空"bulk replay"返回类型 在lua里面使用字符串返回，而空的"bulk replay" 在lua中将以 `ngx.null`来返回。
+
+
+一个非空的REDIS "multi-bulk replay" 返回值在lua里面使用关联数组保存并返回所有可能的值。如果任何一个值包含一个redis错误信息，将返回一个如下格式的二维数组 `{false,err}`
+
+
+一个空的 REDIS"multi-bulk" 返回值在lua里面将会返回ngx.null.
+
+参看 http://redis.io/topics/protocol  去了解redis的返回值类型
+
+除了上述方法外，还支持以下方法。
 [返回顶部](#目录列表)
 
 new
 ---
 `syntax: red, err = redis:new()`
 
+创建一个到redis的连接对象。如果失败返回`nil`和一个字符串形式的错误描述。
 Creates a redis object. In case of failures, returns `nil` and a string describing the error.
 
 [返回顶部](#目录列表)
@@ -224,6 +224,8 @@ connect
 `syntax: ok, err = red:connect("unix:/path/to/unix.sock", options_table?)`
 
 Attempts to connect to the remote host and port that the redis server is listening to or a local unix domain socket file listened by the redis server.
+
+尝试通过制定的主机名和端口或通过一个redis的本地unix套接字连接一个正在监听的redis主机。
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
@@ -661,15 +663,15 @@ Please report bugs or submit patches by
 1. or posting to the [OpenResty community](#community).
 
 [返回顶部](#目录列表)
-
-Author
+作者
 ======
 
 Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
+友情翻译：swordphp@126.com
 
 [返回顶部](#目录列表)
 
-Copyright and License
+版权和协议
 =====================
 
 This module is licensed under the BSD license.
@@ -688,12 +690,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 [返回顶部](#目录列表)
 
-See Also
+查看更多
 ========
-* the ngx_lua module: http://wiki.nginx.org/HttpLuaModule
-* the redis wired protocol specification: http://redis.io/topics/protocol
-* the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
-* the [lua-resty-mysql](https://github.com/agentzh/lua-resty-mysql) library
+* ngx_lua 模块: http://wiki.nginx.org/HttpLuaModule
+* REDIS线上协议规范: http://redis.io/topics/protocol
+* [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
+* [lua-resty-mysql](https://github.com/agentzh/lua-resty-mysql) library
 
 [返回顶部](#目录列表)
 
