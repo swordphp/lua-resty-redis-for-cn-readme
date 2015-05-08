@@ -201,11 +201,13 @@ REDIS的命令调用可以直接映射到这里的方法调用。例如   redis�
 一个非空的REDIS "multi-bulk replay" 返回值在lua里面使用关联数组保存并返回所有可能的值。如果任何一个值包含一个redis错误信息，将返回一个如下格式的二维数组 `{false,err}`
 
 
-一个空的 REDIS"multi-bulk" 返回值在lua里面将会返回ngx.null.
+一个空的 REDIS"multi-bulk" 返回值在lua里面将会返回`ngx.null`.
 
 参看 http://redis.io/topics/protocol  去了解redis的返回值类型
 
 除了上述方法外，还支持以下方法。
+
+
 [返回顶部](#目录列表)
 
 new
@@ -213,7 +215,6 @@ new
 `syntax: red, err = redis:new()`
 
 创建一个到redis的连接对象。如果失败返回`nil`和一个字符串形式的错误描述。
-Creates a redis object. In case of failures, returns `nil` and a string describing the error.
 
 [返回顶部](#目录列表)
 
@@ -222,8 +223,6 @@ connect
 `syntax: ok, err = red:connect(host, port, options_table?)`
 
 `syntax: ok, err = red:connect("unix:/path/to/unix.sock", options_table?)`
-
-Attempts to connect to the remote host and port that the redis server is listening to or a local unix domain socket file listened by the redis server.
 
 尝试通过制定的主机名和端口或通过一个redis的本地unix套接字连接一个正在监听的redis主机。
 
@@ -241,7 +240,7 @@ set_timeout
 ----------
 `syntax: red:set_timeout(time)`
 
-Sets the timeout (in ms) protection for subsequent operations, including the `connect` method.
+设置超时时间（单位ms） 来保证后续操作。包括`connect` 方法。
 
 [返回顶部](#目录列表)
 
@@ -250,13 +249,14 @@ set_keepalive
 `syntax: ok, err = red:set_keepalive(max_idle_timeout, pool_size)`
 
 Puts the current Redis connection immediately into the ngx_lua cosocket connection pool.
-
+立即将当前的Redis连接放入ngx_lua的cosocket连接池。
 You can specify the max idle timeout (in ms) when the connection is in the pool and the maximal size of the pool every nginx worker process.
 
-In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
+当连接在连接池中时可以针对单个nginx 进程指定空闲等待时间。？？不确定。
 
-Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current redis object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
+成功时返回`1`，失败时返回`nil`和字符串类型的错误描述信息。
 
+当你像调用`close`指令关闭一个连接的时候可以用这个方法来替代。调用这个方法将立即讲当前的REDIS连接对象置为关闭状态，任何后续的非`connect()`请求都将返回`closed`错误。
 [返回顶部](#目录列表)
 
 get_reused_times
@@ -264,8 +264,15 @@ get_reused_times
 `syntax: times, err = red:get_reused_times()`
 
 This method returns the (successfully) reused times for the current connection. In case of error, it returns `nil` and a string describing the error.
+这个方法返回当前连接被重用的次数。如果出错，返回`nil`和一个字符串形式的错误描述信息。
 
-If the current connection does not come from the built-in connection pool, then this method always returns `0`, that is, the connection has never been reused (yet). If the connection comes from the connection pool, then the return value is always non-zero. So this method can also be used to determine if the current connection comes from the pool.
+If the current connection does not come from the built-in connection pool, then this method always returns `0`, that is, the connection has never been reused (yet).
+
+如果当前的连接并非来自内置的连接池，讲返回`0` 这意味着这个连接并没有呗重用过。
+
+ If the connection comes from the connection pool, then the return value is always non-zero. So this method can also be used to determine if the current connection comes from the pool.
+
+如果当前连接来自连接池，那么这个方法的返回值将是一个非零的整数。所有此方法可以用来判断当前连接是不是来自连接池。
 
 [返回顶部](#目录列表)
 
@@ -275,7 +282,11 @@ close
 
 Closes the current redis connection and returns the status.
 
+关闭当前的REDIS连接并且返回状态。
+
 In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
+
+如果成功返回`1`，或在失败时候返回`nil`和一个错误描述信息。
 
 [返回顶部](#目录列表)
 
@@ -287,11 +298,19 @@ init_pipeline
 
 Enable the redis pipelining mode. All subsequent calls to Redis command methods will automatically get cached and will send to the server in one run when the `commit_pipeline` method is called or get cancelled by calling the `cancel_pipeline` method.
 
+支持REDIS的命令队列模式，执行后后续的命令将被缓存直到调用`commit_pipeline`方法，或调用`cancel_pipeline`方法放弃执行。
+
 This method always succeeds.
+
+此命令只能成功。
 
 If the redis object is already in the Redis pipelining mode, then calling this method will discard existing cached Redis queries.
 
+如果REDIS对象已经执行在命令队列模式，调用这个方法讲使得命令队列中已经存在的命令被执行。
+
 The optional `n` argument specifies the (approximate) number of commands that are going to add to this pipeline, which can make things a little faster.
+
+参数`n` 近似的指定添加到命令队列中的数量，这个参数可以少许提高性能。
 
 [返回顶部](#目录列表)
 
@@ -301,7 +320,11 @@ commit_pipeline
 
 Quits the pipelining mode by committing all the cached Redis queries to the remote server in a single run. All the replies for these queries will be collected automatically and are returned as if a big multi-bulk reply at the highest level.
 
+退出命令队列模式，并提交所有已经被缓存的redis命令。所有命令的返回值将被自动收集起来并且以最高优先级返回一个 `multi-bulk`。
+
 This method returns `nil` and a Lua string describing the error upon failures.
+
+发生错误时，该方法返回一个`nil`和一个lua string形式的错误描述信息
 
 [返回顶部](#目录列表)
 
@@ -311,9 +334,15 @@ cancel_pipeline
 
 Quits the pipelining mode by discarding all existing cached Redis commands since the last call to the `init_pipeline` method.
 
+放弃所有从上次调用`init_pipeline`方法开始的已经被缓存的所有redis命令，并且退出命令队列模式。
+
 This method always succeeds.
 
+此方法始终成功。
+
 If the redis object is not in the Redis pipelining mode, then this method is a no-op.
+
+如果redis对象并非运行在命令队列模式，此方法是一个空操作。
 
 [返回顶部](#目录列表)
 
@@ -325,8 +354,12 @@ hmset
 
 Special wrapper for the Redis "hmset" command.
 
+对REDIS hmset命令的特殊封装。
+
 When there are only three arguments (including the "red" object
 itself), then the last argument must be a Lua table holding all the field/value pairs.
+
+如果调用此方法时只传递了3个参数（包括redis实例这个参数），强制要求最后的参数是一个包含所有键值对的LUA数组。
 
 [返回顶部](#目录列表)
 
@@ -336,7 +369,11 @@ array_to_hash
 
 Auxiliary function that converts an array-like Lua table into a hash-like table.
 
+一个辅助方法，将lua里面的数组转化程一个hash表。
+
 This method was first introduced in the `v0.11` release.
+
+最早可用版本`v0.11`。
 
 [返回顶部](#目录列表)
 
@@ -345,6 +382,9 @@ read_reply
 `syntax: res, err = red:read_reply()`
 
 Reading a reply from the redis server. This method is mostly useful for the [Redis Pub/Sub API](http://redis.io/topics/pubsub/), for example,
+
+从redis服务器读取返回值。这个方法大多数用于[Redis Pub/Sub API](http://redis.io/topics/pubsub/)，例如：
+
 
 ```lua
     local cjson = require "cjson"
@@ -398,11 +438,15 @@ Reading a reply from the redis server. This method is mostly useful for the [Red
 
 Running this example gives the output like this:
 
+得到的结果类似下面：
+
     1: subscribe: ["subscribe","dog",1]
     2: publish: 1
     1: receive: ["message","dog","Hello"]
 
 The following class methods are provieded:
+
+下面的方法是被保护的：
 
 [返回顶部](#目录列表)
 
@@ -411,6 +455,8 @@ add_commands
 `syntax: hash = redis.add_commands(cmd_name1, cmd_name2, ...)`
 
 Adds new redis commands to the `resty.redis` class. Here is an example:
+
+在`resty.redis`类中注册一个新的redis命令。 下面是一些例子:
 
 ```lua
     local redis = require "resty.redis"
@@ -440,13 +486,17 @@ Adds new redis commands to the `resty.redis` class. Here is an example:
 
 [返回顶部](#目录列表)
 
-Redis Authentication
+REDIS 认证
 ====================
 
 Redis uses the `AUTH` command to do authentication: http://redis.io/commands/auth
 
+Redis使用`AUTH`命令进行认证。
+
 There is nothing special for this command as compared to other Redis
 commands like `GET` and `SET`. So one can just invoke the `auth` method on your `resty.redis` instance. Here is an example:
+
+相比redis的`GET` 和 `SET` 命令，这个命令并没有什么特殊的，所以可以使用 `auth`方法进行认证。举例如下：
 
 ```lua
     local redis = require "resty.redis"
@@ -470,19 +520,25 @@ commands like `GET` and `SET`. So one can just invoke the `auth` method on your 
 where we assume that the Redis server is configured with the
 password `foobared` in the `redis.conf` file:
 
+此处我们假设在redis的 `redis.conf` 里面已经配置了 `foobared`密码。
+
     requirepass foobared
 
 If the password specified is wrong, then the sample above will output the
 following to the HTTP client:
 
+如果制定的密码错误，HTTP连接请求会返回如下信息：
+
     failed to authenticate: ERR invalid password
 
 [返回顶部](#目录列表)
 
-Redis Transactions
+Redis 事务
 ==================
 
 This library supports the [Redis transactions](http://redis.io/topics/transactions/). Here is an example:
+
+这个拓展库支持redis 事务 [Redis transactions](http://redis.io/topics/transactions/). 下面是例子：
 
 ```lua
     local cjson = require "cjson"
@@ -524,7 +580,7 @@ This library supports the [Redis transactions](http://redis.io/topics/transactio
     red:close()
 ```
 
-Then the output will be
+输出结果如下：
 
     multi ans: "OK"
     set ans: "QUEUED"
@@ -533,19 +589,26 @@ Then the output will be
 
 [返回顶部](#目录列表)
 
-Load Balancing and Failover
+负载均衡和故障转移
 ===========================
 
 You can trivially implement your own Redis load balancing logic yourself in Lua. Just keep a Lua table of all available Redis backend information (like host name and port numbers) and pick one server according to some rule (like round-robin or key-based hashing) from the Lua table at every request. You can keep track of the current rule state in your own Lua module's data, see http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker
 
+你可以简单的在lua脚本里面实现负载均衡。例如创建一个数组来存储所有的主机信息，并且在每次请求来临的时候通过一定的规则（随机或者基于关键key的hash）选择一个合适的服务器来响应这次请求。你可以跟踪当前规则下的lua_module的相关数据，参见：http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker
+
 Similarly, you can implement automatic failover logic in Lua at great flexibility.
+
+同样的，也可以通过lua脚本很容易的实现自动故障转移。
 
 [返回顶部](#目录列表)
 
-Debugging
+调试
 =========
 
 It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/software/lua-cjson.php) library to encode the return values of the redis command methods to JSON. For example,
+
+通常情况下为了方便都会使用[lua-cjson](http://www.kyne.com.au/~mark/software/lua-cjson.php) 库去将返回值编码成json数据。例如：
+
 
 ```lua
     local cjson = require "cjson"
@@ -558,12 +621,14 @@ It is usually convenient to use the [lua-cjson](http://www.kyne.com.au/~mark/sof
 
 [返回顶部](#目录列表)
 
-Automatic Error Logging
+自动记录错误
 =======================
 
 By default the underlying [ngx_lua](http://wiki.nginx.org/HttpLuaModule) module
 does error logging when socket errors happen. If you are already doing proper error
 handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](http://wiki.nginx.org/HttpLuaModule)'s [lua_socket_log_errors](http://wiki.nginx.org/HttpLuaModule#lua_socket_log_errors) directive, that is,
+
+底层的 [ngx_lua](http://wiki.nginx.org/HttpLuaModule) 模块已经在socket错误的时候进行了日志记录，如果你已经给你在你的lua脚本里面正确的处理了错误信息。那么推荐关闭 [ngx_lua](http://wiki.nginx.org/HttpLuaModule)模块的错误记录功能，操作如下：
 
 ```nginx
     lua_socket_log_errors off;
@@ -571,7 +636,7 @@ handling in your own Lua code, then you are recommended to disable this automati
 
 [返回顶部](#目录列表)
 
-Check List for Issues
+问题列表
 =====================
 
 1. Ensure you configure the connection pool size properly in the [set_keepalive](#set_keepalive) . Basically if your NGINX handle `n` concurrent requests and your NGINX has `m` workers, then the connection pool size should be configured as `n/m`. For example, if your NGINX usually handles 1000 concurrent requests and you have 10 NGINX workers, then the connection pool size should be 100.
@@ -583,7 +648,7 @@ Check List for Issues
 
 [返回顶部](#目录列表)
 
-Limitations
+限制
 ===========
 
 * This library cannot be used in code contexts like init_by_lua*, set_by_lua*, log_by_lua*, and
@@ -600,13 +665,17 @@ each request.
 
 [返回顶部](#目录列表)
 
-Installation
+安装
 ============
 
 If you are using the ngx_openresty bundle (http://openresty.org ), then
 you do not need to do anything because it already includes and enables
 lua-resty-redis by default. And you can just use it in your Lua code,
 as in
+
+如果你安装了ngx_openresty包，那么你可以直接使用此库，因为默认情况直接包含lua-resty-redis、或者你可以通过lua像下面这样引用：
+
+
 
 ```lua
     local redis = require "resty.redis"
@@ -616,6 +685,8 @@ as in
 If you are using your own nginx + ngx_lua build, then you need to configure
 the lua_package_path directive to add the path of your lua-resty-redis source
 tree to ngx_lua's LUA_PATH search path, as in
+
+如果你使用自己搭建的nginx+ngx_lua环境。需要通过配置 `lua_package_path`指令添加 lua-resty-redis 的路径到LUA_PATH。
 
 ```nginx
     # nginx.conf
@@ -628,6 +699,8 @@ tree to ngx_lua's LUA_PATH search path, as in
 Ensure that the system account running your Nginx ''worker'' proceses have
 enough permission to read the `.lua` file.
 
+确保nginx worker进程的权限能够访问lua文件。
+
 [返回顶部](#目录列表)
 
 TODO
@@ -635,19 +708,19 @@ TODO
 
 [返回顶部](#目录列表)
 
-Community
+社区
 =========
 
 [返回顶部](#目录列表)
 
-English Mailing List
+英文邮件列表
 --------------------
 
 The [openresty-en](https://groups.google.com/group/openresty-en) mailing list is for English speakers.
 
 [返回顶部](#目录列表)
 
-Chinese Mailing List
+中文邮件列表
 --------------------
 
 The [openresty](https://groups.google.com/group/openresty) mailing list is for Chinese speakers.
@@ -659,15 +732,17 @@ Bugs and Patches
 
 Please report bugs or submit patches by
 
-1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-redis/issues),
-1. or posting to the [OpenResty community](#community).
+您可以通过以下途径提交建议或者反馈bug
+
+1.在github上注册并跟踪 [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-redis/issues),
+
+2. 提交到openresty 社区 [OpenResty 社区](#社区).
 
 [返回顶部](#目录列表)
 作者
 ======
 
 Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
-友情翻译：swordphp@126.com
 
 [返回顶部](#目录列表)
 
