@@ -24,22 +24,22 @@ lua-resty-redis - 基于cosocket API为ngx_lua 开发的 lua连接redis 的链�
     * [array_to_hash](#array_to_hash)
     * [read_reply](#read_reply)
     * [add_commands](#add_commands)
-* [Redis 认证](#redis-authentication)
-* [Redis 事务](#redis-transactions)
-* [负载均衡和故障转移](#load-balancing-and-failover)
-* [调试](#debugging)
-* [自动记录错误](#automatic-error-logging)
-* [问题列表](#check-list-for-issues)
-* [限制](#limitations)
-* [社区](#installation)
+* [Redis 认证](#Redis 认证)
+* [Redis 事务](#Redis 事务)
+* [负载均衡和故障转移](#负载均衡和故障转移)
+* [调试](#调试)
+* [自动记录错误](#自动记录错误)
+* [问题列表](#问题列表)
+* [限制](#限制)
+* [安装](#安装)
 * [TODO](#todo)
-* [Community](#community)
+* [社区](#社区)
     * [英文邮件列表](#english-mailing-list)
     * [中文邮件列表](#chinese-mailing-list)
 * [Bugs and Patches](#bugs-and-patches)
-* [作者](#author)
-* [版权和协议](#copyright-and-license)
-* [查看更多](#see-also)
+* [作者](#作者)
+* [版权和协议](#版权和协议)
+* [查看更多](#查看更多)
 
 状态
 ======
@@ -226,13 +226,16 @@ connect
 
 尝试通过指定的主机名和端口或通过一个redis的本地unix套接字连接一个正在监听的redis主机。
 
-Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
 
-An optional Lua table can be specified as the last argument to this method to specify various connect options:
+在解析远程主机并尝试连接之前，这个方法会去尝试查找由上次连接打开的在连接池中的可用空闲连接。
+
+
+一个lua数组方式的参数可以被指定为最后一个参数。用来指定不同的连接选项。
 
 * `pool`
 
-    Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>` or `<unix-socket-path>`.
+
+    为当前连接指定一个自定义的名称，如果省略，讲使用连接信息的字面含义表示。如`<host>:<port>` 或 `<unix-socket-path>`.
 
 [返回顶部](#目录列表)
 
@@ -581,26 +584,31 @@ Redis 事务
 
 1. Ensure you configure the connection pool size properly in the [set_keepalive](#set_keepalive) . Basically if your NGINX handle `n` concurrent requests and your NGINX has `m` workers, then the connection pool size should be configured as `n/m`. For example, if your NGINX usually handles 1000 concurrent requests and you have 10 NGINX workers, then the connection pool size should be 100.
 
+1，确保你[set_keepalive](#set_keepalive)设定的连接池大小是合适的。基本上如果你的nginx能够支撑`n`个并发连接并且你的nginx有`m`个wokers。你的连接池大小应该设置成 `n/m` 。例如，如果你的nginx在通常情况下启动10个workers进程能够承载1000并发，那么你的连接池大小应该设置成100。
 
 
 2. Ensure the backlog setting on the Redis side is large enough. For Redis 2.8+, you can directly tune the `tcp-backlog` parameter in the `redis.conf` file (and also tune the kernel parameter `SOMAXCONN` accordingly at least on Linux). You may also want to tune the `maxclients` parameter in `redis.conf`.
+
+2，确保Redis中的队列长度设置的足够大，在Redis2.8以上版本中，可以在`redis.conf`文件中调整参数`tcp-backlog` 并且调整内核的`SOMAXCONN`参数。（默认情况下redis.conf中的tcp-backlog参数不会大于系统的SOMAXCONN数。当redis的客户端并发数量比较高并且响应缓慢的时候需要考虑调整这两个参数。）
 
 
 
 3. Ensure you are not using too short timeout setting in the [set_timeout](#set_timeout) method. If you have to, try redoing the operation upon timeout and turning off [automatic error logging](#automatic-error-logging) (because you are already doing proper error handling in your own Lua code).
 
+3，确保你通过[set_timeout](#set_timeout)方法设定了足够长的超时时间。试着去调整超时时间并且关闭[automatic error logging](#automatic-error-logging) （因为你已经在你的lua脚本里面正确处理了错误信息。）
 
 
 4. If your NGINX worker processes' CPU usage is very high under load, then the NGINX event loop might be blocked by the CPU computation too much. Try sampling a [C-land on-CPU Flame Graph](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt) and [Lua-land on-CPU Flame Graph](https://github.com/agentzh/stapxx#ngx-lj-lua-stacks) for a typical NGINX worker process. You can optimize the CPU-bound things according to these Flame Graphs.
 
-
+4，如果你的NGINX进程的CPU使用率很高，可能是因为nginx的事件池被过多的CPU计算所阻塞。可以通过[C-land on-CPU Flame Graph](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt) 和 [Lua-land on-CPU Flame Graph](https://github.com/agentzh/stapxx#ngx-lj-lua-stacks) 去追踪一个典型的nginx进程。去优化CPU的使用。
 
 5. If your NGINX worker processes' CPU usage is very low under load, then the NGINX event loop might be blocked by some blocking system calls (like file IO system calls). You can confirm the issue by running the [epoll-loop-blocking-distr](https://github.com/agentzh/stapxx#epoll-loop-blocking-distr) tool against a typical NGINX worker process. If it is indeed the case, then you can further sample a [C-land off-CPU Flame Graph](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt-off-cpu) for a NGINX worker process to analyze the actual blockers.
 
-
+5，如果你的NGINX进程的CPU使用率很低，你的NGINX事件池可能被一些系统调用所阻塞（例如文件IO)。可以通过[epoll-loop-blocking-distr](https://github.com/agentzh/stapxx#epoll-loop-blocking-distr) 去跟踪一个典型的进程。如果确实如此  ，还可以通过[C-land off-CPU Flame Graph](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt-off-cpu)确定到底什么地方出了问题。
 
 6. If your `redis-server` process is running near 100% CPU usage, then you should consider scale your Redis backend by multiple nodes or use the [C-land on-CPU Flame Graph tool](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt) to analyze the internal bottlenecks within the Redis server process.
 
+6，如果你的`redis-server` 进程的CPU使用率将近100% 。应该考虑拓展你的redis后端服务。或使用[C-land on-CPU Flame Graph tool](https://github.com/agentzh/nginx-systemtap-toolkit#sample-bt) 分析redis的内部瓶颈。
 
 
 [返回顶部](#目录列表)
@@ -610,15 +618,26 @@ Redis 事务
 
 * This library cannot be used in code contexts like init_by_lua*, set_by_lua*, log_by_lua*, and
 header_filter_by_lua* where the ngx_lua cosocket API is not available.
+
+这个库不能被init_by_lua*, set_by_lua*, log_by_lua*, 和header_filter_by_lua*等不支持ngx_lua cosocket API方法所使用。
+
 * The `resty.redis` object instance cannot be stored in a Lua variable at the Lua module level,
 because it will then be shared by all the concurrent requests handled by the same nginx
  worker process (see
 http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker ) and
 result in bad race conditions when concurrent requests are trying to use the same `resty.redis` instance
 (you would see the "bad request" or "socket busy" error to be returned from the method calls).
+
+在lua module层面上不能将resty.redis对象保存在一个lua变量中。因为这样做会使得这个对象被同一个进程下的所有并发请求所共享。从而造成这些并发请求争抢同一个resty.redis实例的情况。
+参看http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker
+（请求结果讲出现"bad request" 或者 "socket busy"等错误。）
+
+
 You should always initiate `resty.redis` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
+
+你应该在函数的范围内或者在ngx.ctx中声明resty.redis对象。这些地方在每个独立的请求中有自己的变量副本。
 
 [返回顶部](#目录列表)
 
